@@ -746,7 +746,7 @@
             const items = cart.map(i => ({ id:i.id, name:i.name, price:i.price, quantity:i.quantity, total: i.price*i.quantity }));
             const orderId = 'ORD' + Math.floor(10000+Math.random()*90000);
             const message = `New Order - ${orderId}\nCustomer: ${user.name}\nPhone: ${user.phone}\nAddress: ${user.address}\n\nItems:\n${cart.map(i=>`• ${i.name} (x${i.quantity}) - ₹${(i.price*i.quantity).toLocaleString()}`).join('\n')}\n\nTotal: ₹${total.toLocaleString()}`;
-            window.open(`https://wa.me/919876543210?text=${encodeURIComponent(message)}`, '_blank');
+            window.open(`https://wa.me/918055698328?text=${encodeURIComponent(message)}`, '_blank');
             // Save order to backend (optional)
             try {
                 await fetch(`${API_URL}?action=saveOrder&userId=${user.id}&userName=${user.name}&userEmail=${user.email}&userPhone=${user.phone}&userAddress=${user.address}&items=${encodeURIComponent(JSON.stringify(items))}&totalAmount=${total}&_=${Date.now()}`);
