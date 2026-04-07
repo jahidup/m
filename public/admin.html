@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel - NULL PROTOCOL Pro</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #050814; color: #E5F0FF; font-family: 'Segoe UI', monospace; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
+        h1, h2, h3 { color: #00E1FF; }
+        .login-card, .admin-card { background: #0F172A; padding: 30px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #334155; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #020617; color: white; }
+        button { background: linear-gradient(135deg, #00E1FF, #00FFC6); color: #020617; font-weight: bold; cursor: pointer; padding: 10px 20px; border: none; border-radius: 8px; margin: 5px; }
+        button.danger { background: #FB7185; }
+        button.success { background: #22C55E; }
+        table { width: 100%; border-collapse: collapse; background: #0F172A; margin-top: 15px; }
+        th, td { border: 1px solid #334155; padding: 8px; text-align: left; }
+        .error { color: #FB7185; }
+        .success { color: #22C55E; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #020617; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #00E1FF; }
+        .stat-card h3 { margin: 0; color: #00E1FF; }
+        .stat-card p { font-size: 24px; margin: 10px 0 0; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { background: #334155; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .tab.active { background: #00E1FF; color: #020617; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #0F172A; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; }
+        .close { float: right; cursor: pointer; font-size: 24px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="adminLoginDiv" class="login-card">
+        <h1>👑 Admin Login (4-Field)</h1>
+        <input type="text" id="adminUser" placeholder="Admin ID">
+        <input type="password" id="adminPass" placeholder="Password">
+        <input type="text" id="adminPin" placeholder="4-digit PIN" maxlength="4">
+        <input type="text" id="adminKey" placeholder="Security Key">
+        <button id="adminLoginBtn">Login</button>
+        <div id="adminLoginError" class="error"></div>
+        <div style="margin-top: 15px;"><a href="/">← Back to User Panel</a></div>
+    </div>
+
+    <div id="adminPanelDiv" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <h1>👑 NULL PROTOCOL - Pro Admin Panel</h1>
+            <button id="logoutAdminBtn">Logout</button>
+        </div>
+        <div id="adminMsg"></div>
+
+        <!-- Dashboard Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><h3>Total Users</h3><p id="totalUsers">-</p></div>
+            <div class="stat-card"><h3>Total Credits</h3><p id="totalCredits">-</p></div>
+            <div class="stat-card"><h3>Total Searches</h3><p id="totalSearches">-</p></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" data-tab="users">👥 User Management</div>
+            <div class="tab" data-tab="apis">🔌 API Manager</div>
+            <div class="tab" data-tab="logs">📜 Search Logs</div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div id="tab-users" class="tab-content active">
+            <div class="admin-card">
+                <h2>➕ Add New User</h2>
+                <input type="text" id="newUser" placeholder="Username">
+                <input type="password" id="newPass" placeholder="Password">
+                <input type="number" id="newCredits" placeholder="Credits" value="10">
+                <label><input type="checkbox" id="newBlocked"> Blocked</label>
+                <button id="addUserBtn">Add User</button>
+            </div>
+            <div class="admin-card">
+                <h2>🔍 Search Users</h2>
+                <input type="text" id="searchUser" placeholder="Search by username...">
+                <button id="searchUserBtn">Search</button>
+                <button id="resetSearchBtn">Reset</button>
+            </div>
+            <div class="admin-card">
+                <h2>💰 Bulk Credit Update</h2>
+                <input type="number" id="bulkCredits" placeholder="Add credits to all users">
+                <button id="bulkCreditsBtn">Add Credits to All</button>
+            </div>
+            <div class="admin-card">
+                <h2>📋 All Users</h2>
+                <button id="exportUsersBtn" class="success">📥 Export Users (JSON)</button>
+                <table id="userTable">
+                    <thead><tr><th>ID</th><th>Username</th><th>Credits</th><th>Blocked</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- API Manager Tab -->
+        <div id="tab-apis" class="tab-content">
+            <div class="admin-card">
+                <h2>➕ Add New API</h2>
+                <input type="text" id="apiType" placeholder="API Type (e.g., custom_api)">
+                <input type="text" id="apiUrl" placeholder="API URL (use {query} as placeholder)">
+                <input type="text" id="apiDesc" placeholder="Description">
+                <label><input type="checkbox" id="apiEnabled" checked> Enabled</label>
+                <button id="addApiBtn">Add API</button>
+            </div>
+            <div class="admin-card">
+                <h2>🔧 Test API Endpoint</h2>
+                <input type="text" id="testUrl" placeholder="API URL with {query}">
+                <input type="text" id="testQuery" placeholder="Test query value">
+                <button id="testApiBtn">Test API</button>
+                <div id="testResult" class="result" style="margin-top: 10px; max-height: 200px;"></div>
+            </div>
+            <div class="admin-card">
+                <h2>📡 All API Configurations</h2>
+                <table id="apiTable">
+                    <thead><tr><th>ID</th><th>Type</th><th>URL</th><th>Description</th><th>Enabled</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Search Logs Tab -->
+        <div id="tab-logs" class="tab-content">
+            <div class="admin-card">
+                <h2>🔍 Filter Logs</h2>
+                <select id="logUserFilter">
+                    <option value="">All Users</option>
+                </select>
+                <button id="filterLogsBtn">Filter</button>
+                <table id="logsTable">
+                    <thead><tr><th>ID</th><th>User</th><th>API Type</th><th>Query</th><th>Timestamp</th><th>Response Preview</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for editing API -->
+<div id="editApiModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Edit API</h3>
+        <input type="hidden" id="editApiId">
+        <input type="text" id="editApiType" placeholder="Type">
+        <input type="text" id="editApiUrl" placeholder="URL">
+        <input type="text" id="editApiDesc" placeholder="Description">
+        <label><input type="checkbox" id="editApiEnabled"> Enabled</label>
+        <button id="saveApiEditBtn">Save Changes</button>
+    </div>
+</div>
+
+<script>
+    let adminToken = localStorage.getItem('adminToken');
+    let currentEditApiId = null;
+
+    if (adminToken) {
+        document.getElementById('adminLoginDiv').style.display = 'none';
+        document.getElementById('adminPanelDiv').style.display = 'block';
+        loadDashboard();
+        loadUsers();
+        loadApis();
+        loadLogs();
+        loadUserDropdown();
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+            if (tab.dataset.tab === 'logs') loadLogs();
+            if (tab.dataset.tab === 'apis') loadApis();
+        });
+    });
+
+    async function loadDashboard() {
+        const res = await fetch('/admin/stats', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (res.ok) {
+            const stats = await res.json();
+            document.getElementById('totalUsers').innerText = stats.totalUsers;
+            document.getElementById('totalCredits').innerText = stats.totalCredits;
+            document.getElementById('totalSearches').innerText = stats.totalSearches;
+        }
+    }
+
+    async function loadUsers(search = '') {
+        let url = '/admin/users';
+        if (search) url += `?search=${encodeURIComponent(search)}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (res.status === 401) { localStorage.removeItem('adminToken'); location.reload(); return; }
+        const users = await res.json();
+        const tbody = document.querySelector('#userTable tbody');
+        tbody.innerHTML = '';
+        users.forEach(u => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = u.id;
+            row.insertCell(1).innerText = u.username;
+            row.insertCell(2).innerHTML = `<input type="number" id="cred_${u.id}" value="${u.credits}" style="width:80px">`;
+            row.insertCell(3).innerHTML = `<input type="checkbox" id="block_${u.id}" ${u.is_blocked ? 'checked' : ''}>`;
+            row.insertCell(4).innerHTML = `<button onclick="updateUser(${u.id})">Update</button>
+                                           <button class="danger" onclick="deleteUser(${u.id})">Delete</button>`;
+        });
+    }
+
+    window.updateUser = async (id) => {
+        const credits = document.getElementById(`cred_${id}`).value;
+        const is_blocked = document.getElementById(`block_${id}`).checked;
+        const res = await fetch(`/admin/user/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ credits: parseInt(credits), is_blocked })
+        });
+        if (res.ok) {
+            showMsg('✅ User updated', 'success');
+            loadDashboard();
+        } else {
+            showMsg('❌ Update failed', 'error');
+        }
+    };
+
+    window.deleteUser = async (id) => {
+        if (confirm('Delete this user?')) {
+            await fetch(`/admin/user/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            loadUsers();
+            loadDashboard();
+        }
+    };
+
+    document.getElementById('addUserBtn').onclick = async () => {
+        const username = document.getElementById('newUser').value.trim();
+        const password = document.getElementById('newPass').value;
+        const credits = parseInt(document.getElementById('newCredits').value);
+        const is_blocked = document.getElementById('newBlocked').checked;
+        if (!username || !password) return alert('Username and password required');
+        const res = await fetch('/admin/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ username, password, credits, is_blocked })
+        });
+        if (res.ok) {
+            loadUsers();
+            loadDashboard();
+            document.getElementById('newUser').value = '';
+            document.getElementById('newPass').value = '';
+            document.getElementById('newCredits').value = 10;
+            document.getElementById('newBlocked').checked = false;
+            showMsg('✅ User added', 'success');
+        } else {
+            const err = await res.json();
+            alert(err.error);
+        }
+    };
+
+    document.getElementById('searchUserBtn').onclick = () => {
+        const search = document.getElementById('searchUser').value;
+        loadUsers(search);
+    };
+
+    document.getElementById('resetSearchBtn').onclick = () => {
+        document.getElementById('searchUser').value = '';
+        loadUsers();
+    };
+
+    document.getElementById('bulkCreditsBtn').onclick = async () => {
+        const amount = parseInt(document.getElementById('bulkCredits').value);
+        if (!amount || amount <= 0) return alert('Enter valid amount');
+        const res = await fetch('/admin/bulk-credits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ amount })
+        });
+        if (res.ok) {
+            showMsg(`✅ Added ${amount} credits to all users`, 'success');
+            loadUsers();
+            loadDashboard();
+        } else {
+            showMsg('❌ Failed', 'error');
+        }
+    };
+
+    document.getElementById('exportUsersBtn').onclick = async () => {
+        const res = await fetch('/admin/users', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const users = await res.json();
+        const dataStr = JSON.stringify(users, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users_export.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // API Management
+    async function loadApis() {
+        const res = await fetch('/admin/api-configs', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const apis = await res.json();
+        const tbody = document.querySelector('#apiTable tbody');
+        tbody.innerHTML = '';
+        apis.forEach(api => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = api.id;
+            row.insertCell(1).innerText = api.type;
+            row.insertCell(2).innerHTML = `<span title="${api.url}">${api.url.substring(0, 50)}...</span>`;
+            row.insertCell(3).innerText = api.description || '-';
+            row.insertCell(4).innerHTML = api.enabled ? '✅' : '❌';
+            row.insertCell(5).innerHTML = `<button onclick="editApi(${api.id})">Edit</button>
+                                           <button class="danger" onclick="deleteApi(${api.id})">Delete</button>`;
+        });
+    }
+
+    window.editApi = (id) => {
+        const modal = document.getElementById('editApiModal');
+        modal.style.display = 'flex';
+        fetch(`/admin/api-configs`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+            .then(res => res.json())
+            .then(apis => {
+                const api = apis.find(a => a.id === id);
+                if (api) {
+                    document.getElementById('editApiId').value = api.id;
+                    document.getElementById('editApiType').value = api.type;
+                    document.getElementById('editApiUrl').value = api.url;
+                    document.getElementById('editApiDesc').value = api.description || '';
+                    document.getElementById('editApiEnabled').checked = api.enabled === 1;
+                }
+            });
+    };
+
+    document.getElementById('saveApiEditBtn').onclick = async () => {
+        const id = document.getElementById('editApiId').value;
+        const type = document.getElementById('editApiType').value;
+        const url = document.getElementById('editApiUrl').value;
+        const description = document.getElementById('editApiDesc').value;
+        const enabled = document.getElementById('editApiEnabled').checked;
+        const res = await fetch(`/admin/api-configs/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ type, url, description, enabled })
+        });
+        if (res.ok) {
+            loadApis();
+            document.getElementById('editApiModal').style.display = 'none';
+            showMsg('✅ API updated', 'success');
+        } else {
+            showMsg('❌ Update failed', 'error');
+        }
+    };
+
+    window.deleteApi = async (id) => {
+        if (confirm('Delete this API? Users will no longer see it.')) {
+            await fetch(`/admin/api-configs/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+            loadApis();
+            showMsg('✅ API deleted', 'success');
+        }
+    };
+
+    document.getElementById('addApiBtn').onclick = async () => {
+        const type = document.getElementById('apiType').value.trim();
+        const url = document.getElementById('apiUrl').value.trim();
+        const description = document.getElementById('apiDesc').value.trim();
+        const enabled = document.getElementById('apiEnabled').checked;
+        if (!type || !url) return alert('Type and URL required');
+        const res = await fetch('/admin/api-configs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ type, url, description, enabled })
+        });
+        if (res.ok) {
+            loadApis();
+            document.getElementById('apiType').value = '';
+            document.getElementById('apiUrl').value = '';
+            document.getElementById('apiDesc').value = '';
+            document.getElementById('apiEnabled').checked = true;
+            showMsg('✅ API added', 'success');
+        } else {
+            const err = await res.json();
+            alert(err.error);
+        }
+    };
+
+    document.getElementById('testApiBtn').onclick = async () => {
+        let url = document.getElementById('testUrl').value;
+        const query = document.getElementById('testQuery').value || 'test';
+        if (!url) return alert('Enter API URL');
+        const res = await fetch('/admin/test-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ url, query })
+        });
+        const data = await res.json();
+        const resultDiv = document.getElementById('testResult');
+        if (data.success) {
+            resultDiv.innerHTML = `<strong>✅ Response:</strong><br><pre>${JSON.stringify(data.data, null, 2)}</pre>`;
+        } else {
+            resultDiv.innerHTML = `<strong>❌ Error:</strong> ${data.error}`;
+        }
+    };
+
+    // Logs
+    async function loadLogs(userId = '') {
+        let url = '/admin/logs';
+        if (userId) url += `?userId=${userId}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const logs = await res.json();
+        const tbody = document.querySelector('#logsTable tbody');
+        tbody.innerHTML = '';
+        logs.forEach(log => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = log.id;
+            row.insertCell(1).innerText = log.username || `User ${log.user_id}`;
+            row.insertCell(2).innerText = log.api_type;
+            row.insertCell(3).innerText = log.query;
+            row.insertCell(4).innerText = log.timestamp;
+            let preview = '-';
+            try {
+                const resp = JSON.parse(log.response);
+                preview = JSON.stringify(resp).substring(0, 100) + '...';
+            } catch(e) { preview = log.response?.substring(0, 100); }
+            row.insertCell(5).innerHTML = `<span title="${log.response?.substring(0, 500)}">${preview}</span>`;
+        });
+    }
+
+    async function loadUserDropdown() {
+        const res = await fetch('/admin/users', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const users = await res.json();
+        const select = document.getElementById('logUserFilter');
+        select.innerHTML = '<option value="">All Users</option>';
+        users.forEach(user => {
+            select.innerHTML += `<option value="${user.id}">${user.username}</option>`;
+        });
+    }
+
+    document.getElementById('filterLogsBtn').onclick = () => {
+        const userId = document.getElementById('logUserFilter').value;
+        loadLogs(userId);
+    };
+
+    document.getElementById('logoutAdminBtn').onclick = () => {
+        localStorage.removeItem('adminToken');
+        location.reload();
+    };
+
+    document.getElementById('adminLoginBtn').onclick = async () => {
+        const username = document.getElementById('adminUser').value.trim();
+        const password = document.getElementById('adminPass').value;
+        const pin = document.getElementById('adminPin').value.trim();
+        const securityKey = document.getElementById('adminKey').value.trim();
+        if (!username || !password || !pin || !securityKey) {
+            document.getElementById('adminLoginError').innerText = 'All 4 fields required';
+            return;
+        }
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, pin, securityKey })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            adminToken = data.token;
+            localStorage.setItem('adminToken', adminToken);
+            document.getElementById('adminLoginDiv').style.display = 'none';
+            document.getElementById('adminPanelDiv').style.display = 'block';
+            loadDashboard();
+            loadUsers();
+            loadApis();
+            loadLogs();
+            loadUserDropdown();
+        } else {
+            document.getElementById('adminLoginError').innerText = data.error || 'Invalid credentials';
+        }
+    };
+
+    function showMsg(msg, type) {
+        const div = document.getElementById('adminMsg');
+        div.innerHTML = `<div class="${type}">${msg}</div>`;
+        setTimeout(() => div.innerHTML = '', 3000);
+    }
+
+    // Modal close
+    document.querySelector('.close').onclick = () => {
+        document.getElementById('editApiModal').style.display = 'none';
+    };
+    window.onclick = (e) => {
+        if (e.target === document.getElementById('editApiModal')) {
+            document.getElementById('editApiModal').style.display = 'none';
+        }
+    };
+</script>
+</body>
+</html>
