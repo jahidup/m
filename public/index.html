@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NULL PROTOCOL - User Panel</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui; background: #050814; color: #E5F0FF; margin: 0; padding: 20px; }
+        .login-container, .app-container { max-width: 800px; margin: 50px auto; background: rgba(15,23,42,0.95); border-radius: 16px; padding: 30px; border: 1px solid rgba(148,163,184,0.4); backdrop-filter: blur(10px); }
+        h1 { text-align: center; color: #00E1FF; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 40px; border: 1px solid #334155; background: #020617; color: white; font-size: 14px; }
+        button { background: linear-gradient(135deg, #00E1FF, #00FFC6); color: #020617; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        button:hover { transform: scale(1.02); }
+        .error { color: #FB7185; font-size: 14px; }
+        .credit-badge { background: #22C55E20; padding: 8px 16px; border-radius: 40px; display: inline-block; margin-bottom: 20px; border: 1px solid #22C55E; }
+        .result { background: #020617; padding: 15px; border-radius: 12px; white-space: pre-wrap; font-family: monospace; font-size: 12px; margin-top: 20px; max-height: 400px; overflow: auto; border: 1px solid #334155; }
+        .admin-link { text-align: center; margin-top: 20px; }
+        a { color: #00E1FF; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .loading { text-align: center; padding: 20px; color: #00E1FF; }
+    </style>
+</head>
+<body>
+<div id="loginDiv" class="login-container">
+    <h1>🔐 NULL PROTOCOL - User Login</h1>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <div id="loginError" class="error"></div>
+    <div class="admin-link">Admin? <a href="/admin.html">Go to Admin Panel (4-field login)</a></div>
+</div>
+
+<div id="appDiv" class="app-container" style="display:none;">
+    <div class="nav">
+        <div class="credit-badge">💰 Credits: <span id="credits">0</span></div>
+        <button id="logoutBtn" style="width: auto; padding: 6px 12px;">Logout</button>
+    </div>
+    <h1>🔍 Search Database</h1>
+    <select id="apiType">
+        <option value="">Loading APIs...</option>
+    </select>
+    <input type="text" id="query" placeholder="Enter search value (e.g., 9876543210)">
+    <button id="searchBtn">🔎 Search (1 credit)</button>
+    <div id="searchResult" class="result">Waiting for search...</div>
+</div>
+
+<script>
+    let token = null;
+    const loginDiv = document.getElementById('loginDiv');
+    const appDiv = document.getElementById('appDiv');
+    const creditsSpan = document.getElementById('credits');
+    const loginBtn = document.getElementById('loginBtn');
+    const searchBtn = document.getElementById('searchBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const apiType = document.getElementById('apiType');
+    const queryInput = document.getElementById('query');
+    const resultDiv = document.getElementById('searchResult');
+
+    async function loadApiTypes() {
+        try {
+            const res = await fetch('/api/api-types', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok && Array.isArray(data)) {
+                apiType.innerHTML = '';
+                if (data.length === 0) {
+                    apiType.innerHTML = '<option value="">No APIs available</option>';
+                } else {
+                    data.forEach(api => {
+                        const option = document.createElement('option');
+                        option.value = api.type;
+                        option.textContent = api.type.toUpperCase() + ' - ' + (api.description || '');
+                        apiType.appendChild(option);
+                    });
+                }
+            } else {
+                apiType.innerHTML = '<option value="">Failed to load APIs</option>';
+            }
+        } catch (err) {
+            apiType.innerHTML = '<option value="">Error loading APIs</option>';
+        }
+    }
+
+    loginBtn.onclick = async () => {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        if (!username || !password) {
+            document.getElementById('loginError').innerText = 'Enter username and password';
+            return;
+        }
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            token = data.token;
+            localStorage.setItem('userToken', token);
+            creditsSpan.innerText = data.credits;
+            loginDiv.style.display = 'none';
+            appDiv.style.display = 'block';
+            document.getElementById('loginError').innerText = '';
+            await loadApiTypes();
+        } else {
+            document.getElementById('loginError').innerText = data.error;
+        }
+    };
+
+    searchBtn.onclick = async () => {
+        if (!token) return;
+        const query = queryInput.value.trim();
+        const selectedApi = apiType.value;
+        if (!query) {
+            resultDiv.innerHTML = '⚠️ Please enter a search value';
+            return;
+        }
+        if (!selectedApi) {
+            resultDiv.innerHTML = '⚠️ Please select an API type';
+            return;
+        }
+        resultDiv.innerHTML = '⏳ Searching... (1 credit will be deducted)';
+        try {
+            const res = await fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ apiType: selectedApi, query })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                creditsSpan.innerText = data.credits_left;
+                resultDiv.innerHTML = JSON.stringify(data.data, null, 2);
+            } else {
+                resultDiv.innerHTML = `❌ Error: ${data.error}`;
+                if (data.error === 'Insufficient credits') {
+                    setTimeout(() => { window.location.reload(); }, 2000);
+                }
+            }
+        } catch (err) {
+            resultDiv.innerHTML = `❌ Network error: ${err.message}`;
+        }
+    };
+
+    logoutBtn.onclick = () => {
+        localStorage.removeItem('userToken');
+        location.reload();
+    };
+
+    // Auto-login if token exists
+    const savedToken = localStorage.getItem('userToken');
+    if (savedToken) {
+        token = savedToken;
+        fetch('/api/me', { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => res.json())
+            .then(data => {
+                if (data.credits !== undefined) {
+                    creditsSpan.innerText = data.credits;
+                    loginDiv.style.display = 'none';
+                    appDiv.style.display = 'block';
+                    loadApiTypes();
+                } else {
+                    localStorage.removeItem('userToken');
+                }
+            })
+            .catch(() => localStorage.removeItem('userToken'));
+    }
+
+    queryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') searchBtn.click(); });
+    document.getElementById('password').addEventListener('keypress', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+</script>
+</body>
+</html>
